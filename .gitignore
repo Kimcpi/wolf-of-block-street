@@ -3,3 +3,12 @@
 
 # Generated for editor autocomplete; rebuilt on demand
 sourcemap.json
+
+# Local editor and tool settings
+.claude/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.pyc
