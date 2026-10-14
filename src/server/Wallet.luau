@@ -65,4 +65,16 @@ function Wallet.trySpend(player: Player, amount: number): boolean
 	return true
 end
 
+-- Adds to the balance. Refuses non-positive amounts so it can never be
+-- used in reverse to drain an account.
+function Wallet.credit(player: Player, amount: number)
+	local balance = balances[player]
+	if balance == nil or amount <= 0 then
+		return
+	end
+
+	balances[player] = round2(balance + amount)
+	syncDisplay(player)
+end
+
 return Wallet

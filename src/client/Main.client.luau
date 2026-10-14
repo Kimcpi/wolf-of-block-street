@@ -11,7 +11,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Listings = require(ReplicatedStorage.Shared.Listings)
 
 local ROW_HEIGHT = 26
-local BUTTON_WIDTH = 52
+local BUTTON_WIDTH = 46
+local BUTTON_GAP = 4
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -21,6 +22,7 @@ local playerGui = player:WaitForChild("PlayerGui")
 local marketState = ReplicatedStorage:WaitForChild("MarketState")
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local buyRemote = remotes:WaitForChild("Buy") :: RemoteFunction
+local sellRemote = remotes:WaitForChild("Sell") :: RemoteFunction
 
 local portfolio = player:WaitForChild("Portfolio")
 local cash = player:WaitForChild("leaderstats"):WaitForChild("Cash") :: IntValue
@@ -30,7 +32,7 @@ screenGui.Name = "MarketUI"
 screenGui.ResetOnSpawn = false
 
 local panel = Instance.new("Frame")
-panel.Size = UDim2.fromOffset(320, 0)
+panel.Size = UDim2.fromOffset(360, 0)
 panel.AutomaticSize = Enum.AutomaticSize.Y
 panel.Position = UDim2.fromOffset(16, 16)
 panel.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
@@ -90,23 +92,32 @@ for index, listing in Listings do
 	row.LayoutOrder = index + 2
 	row.Parent = panel
 
+	local buttonsWidth = BUTTON_WIDTH * 2 + BUTTON_GAP
+
 	local label = makeLabel(row, 1, Color3.fromRGB(200, 205, 215))
-	label.Size = UDim2.new(1, -BUTTON_WIDTH - 8, 1, 0)
+	label.Size = UDim2.new(1, -buttonsWidth - 8, 1, 0)
 
-	local button = Instance.new("TextButton")
-	button.Size = UDim2.fromOffset(BUTTON_WIDTH, 22)
-	button.Position = UDim2.new(1, -BUTTON_WIDTH, 0, 2)
-	button.BackgroundColor3 = Color3.fromRGB(40, 120, 70)
-	button.BorderSizePixel = 0
-	button.Font = Enum.Font.Code
-	button.TextSize = 14
-	button.TextColor3 = Color3.fromRGB(245, 245, 245)
-	button.Text = "BUY"
-	button.Parent = row
+	local function makeButton(text: string, color: Color3, offsetFromRight: number): TextButton
+		local button = Instance.new("TextButton")
+		button.Size = UDim2.fromOffset(BUTTON_WIDTH, 22)
+		button.Position = UDim2.new(1, -offsetFromRight, 0, 2)
+		button.BackgroundColor3 = color
+		button.BorderSizePixel = 0
+		button.Font = Enum.Font.Code
+		button.TextSize = 14
+		button.TextColor3 = Color3.fromRGB(245, 245, 245)
+		button.Text = text
+		button.Parent = row
 
-	local buttonCorner = Instance.new("UICorner")
-	buttonCorner.CornerRadius = UDim.new(0, 4)
-	buttonCorner.Parent = button
+		local buttonCorner = Instance.new("UICorner")
+		buttonCorner.CornerRadius = UDim.new(0, 4)
+		buttonCorner.Parent = button
+
+		return button
+	end
+
+	local buyButton = makeButton("BUY", Color3.fromRGB(40, 120, 70), buttonsWidth)
+	local sellButton = makeButton("SELL", Color3.fromRGB(140, 55, 55), BUTTON_WIDTH)
 
 	local function update()
 		label.Text = string.format("%-6s $%8.2f  x%d", listing.ticker, price.Value, owned.Value)
@@ -116,13 +127,21 @@ for index, listing in Listings do
 	price:GetPropertyChangedSignal("Value"):Connect(update)
 	owned:GetPropertyChangedSignal("Value"):Connect(update)
 
-	button.Activated:Connect(function()
-		-- The server decides. We send only what and how many; it looks up
-		-- the price, checks the balance, and may refuse.
-		local ok, message = buyRemote:InvokeServer(listing.id, 1)
+	-- Both buttons send only the listing and a quantity. The server looks
+	-- up the price, checks the balance or holdings, and may refuse.
+	local function trade(remote: RemoteFunction, verb: string)
+		local ok, message = remote:InvokeServer(listing.id, 1)
 		if not ok then
-			warn(string.format("Buy %s failed: %s", listing.ticker, tostring(message)))
+			warn(string.format("%s %s failed: %s", verb, listing.ticker, tostring(message)))
 		end
+	end
+
+	buyButton.Activated:Connect(function()
+		trade(buyRemote, "Buy")
+	end)
+
+	sellButton.Activated:Connect(function()
+		trade(sellRemote, "Sell")
 	end)
 end
 

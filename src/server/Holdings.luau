@@ -62,4 +62,28 @@ function Holdings.add(player: Player, listingId: string, quantity: number)
 	end
 end
 
+-- Removes shares only if the player actually holds that many. Returns
+-- whether the removal happened, so a caller never pays out for shares
+-- that were not there.
+function Holdings.tryRemove(player: Player, listingId: string, quantity: number): boolean
+	local owned = holdings[player]
+	if owned == nil then
+		return false
+	end
+
+	local current = owned[listingId] or 0
+	if quantity <= 0 or quantity > current then
+		return false
+	end
+
+	owned[listingId] = current - quantity
+
+	local mirror = displays[player]
+	if mirror ~= nil and mirror[listingId] ~= nil then
+		mirror[listingId].Value = owned[listingId]
+	end
+
+	return true
+end
+
 return Holdings
