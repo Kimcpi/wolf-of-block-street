@@ -7,6 +7,19 @@ local Wallet = {}
 local STARTING_BALANCE = 1000
 
 local balances: { [Player]: number } = {}
+local cashValues: { [Player]: IntValue } = {}
+
+local function round2(n: number): number
+	return math.floor(n * 100 + 0.5) / 100
+end
+
+local function syncDisplay(player: Player)
+	local display = cashValues[player]
+	if display ~= nil then
+		-- leaderstats shows whole dollars; the balance itself keeps cents.
+		display.Value = math.floor(balances[player] or 0)
+	end
+end
 
 function Wallet.open(player: Player)
 	balances[player] = STARTING_BALANCE
@@ -22,14 +35,34 @@ function Wallet.open(player: Player)
 	cash.Parent = leaderstats
 
 	leaderstats.Parent = player
+	cashValues[player] = cash
 end
 
 function Wallet.close(player: Player)
 	balances[player] = nil
+	cashValues[player] = nil
 end
 
 function Wallet.getBalance(player: Player): number
 	return balances[player] or 0
+end
+
+-- Deducts amount only if the player can afford it. Returns whether the
+-- charge went through. Refuses non-positive amounts so a negative cost
+-- can never be used to add money.
+function Wallet.trySpend(player: Player, amount: number): boolean
+	local balance = balances[player]
+	if balance == nil then
+		return false
+	end
+
+	if amount <= 0 or amount > balance then
+		return false
+	end
+
+	balances[player] = round2(balance - amount)
+	syncDisplay(player)
+	return true
 end
 
 return Wallet
