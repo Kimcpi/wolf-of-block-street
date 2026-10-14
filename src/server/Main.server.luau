@@ -10,6 +10,9 @@ local Trading = require(script.Parent.Trading)
 
 local TICK_SECONDS = 5
 
+-- This is a terminal, not a world. No avatar is ever spawned.
+Players.CharacterAutoLoads = false
+
 Players.PlayerAdded:Connect(function(player: Player)
 	Wallet.open(player)
 	Holdings.open(player)

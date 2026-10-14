@@ -7,6 +7,9 @@
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterGui = game:GetService("StarterGui")
+local TextChatService = game:GetService("TextChatService")
+local Workspace = game:GetService("Workspace")
 
 local Listings = require(ReplicatedStorage.Shared.Listings)
 
@@ -16,6 +19,35 @@ local BUTTON_GAP = 4
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
+
+-- Strip Roblox's own interface. Nothing here is a 3D experience.
+-- SetCoreGuiEnabled can fail if called before the CoreGui is ready, so
+-- it is retried rather than assumed.
+task.spawn(function()
+	for _ = 1, 10 do
+		local ok = pcall(function()
+			StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false)
+		end)
+		if ok then
+			break
+		end
+		task.wait(0.2)
+	end
+end)
+
+-- Chat lives in TextChatService now, separate from CoreGui.
+pcall(function()
+	TextChatService.ChatWindowConfiguration.Enabled = false
+	TextChatService.ChatInputBarConfiguration.Enabled = false
+end)
+
+-- With no character there is nothing for the camera to follow, so it is
+-- pinned somewhere harmless and left alone.
+local camera = Workspace.CurrentCamera
+if camera ~= nil then
+	camera.CameraType = Enum.CameraType.Scriptable
+	camera.CFrame = CFrame.new(0, 200, 0) * CFrame.Angles(0, 0, 0)
+end
 
 -- These are created at runtime by the server, so they may not exist yet
 -- when this script first runs.
@@ -30,15 +62,24 @@ local cash = player:WaitForChild("leaderstats"):WaitForChild("Cash") :: IntValue
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "MarketUI"
 screenGui.ResetOnSpawn = false
+-- Extend under the strip Roblox reserves at the top of the screen.
+screenGui.IgnoreGuiInset = true
+
+-- Opaque full-screen canvas. The 3D world behind it is never seen.
+local canvas = Instance.new("Frame")
+canvas.Name = "Canvas"
+canvas.Size = UDim2.fromScale(1, 1)
+canvas.BackgroundColor3 = Color3.fromRGB(10, 12, 16)
+canvas.BorderSizePixel = 0
+canvas.Parent = screenGui
 
 local panel = Instance.new("Frame")
 panel.Size = UDim2.fromOffset(360, 0)
 panel.AutomaticSize = Enum.AutomaticSize.Y
-panel.Position = UDim2.fromOffset(16, 16)
-panel.BackgroundColor3 = Color3.fromRGB(18, 20, 26)
-panel.BackgroundTransparency = 0.1
+panel.Position = UDim2.fromOffset(16, 56)
+panel.BackgroundColor3 = Color3.fromRGB(13, 16, 23)
 panel.BorderSizePixel = 0
-panel.Parent = screenGui
+panel.Parent = canvas
 
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 8)
